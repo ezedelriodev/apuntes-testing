@@ -23,6 +23,7 @@
 - [**Errores**](#errores)
   - [Error: The given element does not have a value setter](#error-the-given-element-does-not-have-a-value-setter)
 - [**Funcionamiento de screen.debug()**](#funcionamiento-de-screendebug)
+- [**Vale**](#vale)
 
 
 
@@ -352,13 +353,6 @@ const mockNavigate = vi.fn();
    - `` mockReturnValue(mockNavigate)``: Configura el mock de useNavigate para que devuelva mockNavigate cuando el componente lo invoque.
        - En lugar de devolver la implementación real de useNavigate, se usa la función simulada mockNavigate.
 
-
-
-
-
-
-
-
 **[⬆ Volver a índice](#índice)**
 
 ---
@@ -512,6 +506,260 @@ Imprime todo el DOM y 30.000 caracteres:
 screen.debug(undefined, 30000)
 ```
 
+**[⬆ Volver a índice](#índice)**
+
+---
+## **Vale**
+Ejemplo de uso  
+Con esta implementación, si llamas a ``formatPriceDotComma(100, 2)``, el mock devolverá "100,00". Este enfoque es útil para pruebas donde se necesita el valor retornado formateado, permitiendo verificar los resultados que dependen de la salida formateada de la función.
+<!-- **Mockear una funció que invocamos para llamar a un servicio.**
+<div style="display: flex; gap: 10px;">
+  <div style="width: 50%;">
+    <span style="color: yellow;">// Componente</span>
+
+```js
+    import { fetchRequiredDocumentsService } from "@/connects/required-documents.connect";
+    ...
+        fetchRequiredDocumentsService({
+          language: locale,
+          projectId: offerSelected?.projectId,
+          setLoading: setRequiredDocumentsLoading || (() => {})
+          supplierId: offerSelected?.supplierId,
+          offerDetail: offerSelected,
+          config,
+        });
+ ```       
+  </div>
+  <div style="width: 50%;">
+    <span style="color: yellow;">//Ejecución de test</span>
+
+```js
+    import { fetchRequiredDocumentsService } from "@/connects/required-documents.connect";
+
+    vi.mock("@/connects/required-documents.connect", () => ({
+      fetchRequiredDocumentsService: vi.fn(),
+    }));
+
+    expect(fetchRequiredDocumentsService).toHaveBeenCalledWith({
+        language: "EN",
+        projectId: mockOfferSelected.projectId,
+        setLoading: expect.any(Function),
+        offerDetail: mockOfferSelected,
+        config: expect.any(Object),
+      });
+    });
+  ``` 
+  </div>
+</div> 
+
+- En el componente a testear tenemos importados otros componentes que se renderizaran de forma condicional en función de algunas variables:
+```js
+import Tabs from "@amiga-fwk-web/components-navigation/tabs";
+import Button from "@amiga-fwk-web/components-action/button";
+import FeedbackState from "@amiga-fwk-web/components-feedback/feedback-state-v2";
+import Loader from "@amiga-fwk-web/components-feedback/loader";
+```
+
+<div style="display: flex; gap: 10px;">
+  <div style="width: 50%;">
+    <span style="color: yellow;">// Componente</span>
+
+```js
+   {loading ? (
+     <div className="custom-loader__parent-div">
+       <FeedbackState
+         title={GetTranslatedText("loader.loading")}
+         subtitle={GetTranslatedText("loader.subtitle")}
+         header={<Loader size="large" />}
+       />
+     </div>
+   ) : (...
+ ```
+  </div>
+  <div style="width: 50%;">
+    <span style="color: yellow;">//Ejecución de test</span>
+
+```js
+    vi.mock("@amiga-fwk-web/components-feedback/feedback-state-v2", () => ({
+      __esModule: true,
+      default: () => <div>`Mocked FeedbackState`</div>,
+    }));
+    //Generamos las condiciones para que se renderice el componente.
+    expect(screen.getByText("Mocked FeedbackState")).toBeInTheDocument();
+``` 
+  </div>
+</div> 
+
+-**Podemos mockear un botón, simular su click y comprobar el resultado de la ejecución de la función que se ejecuta en el componente.**
+
+<div style="display: flex; gap: 10px;">
+  <div style="width: 50%;">
+    <span style="color: yellow;">// Componente</span>
+
+```js
+  {offerSelected.editableOffer && (
+    <Button
+      className="general__white_button_default"
+      kind="standard"
+      label={GetTranslatedText("offer-detail.editButton")}
+      onClick={onClickEditMode}
+    />
+  )}
+ ```
+  </div>
+  <div style="width: 50%;">
+    <span style="color: yellow;">//Ejecución de test</span>
+
+```js
+vi.mock("@amiga-fwk-web/components-action/button", () => ({
+  __esModule: true,
+  default: ({ onClick }: any) => (
+    <button data-testid="edit-button" onClick={onClick}>
+      Edit
+    </button>
+  ),
+}));
+...
+//Creamos las condiciones para renderizar el botón
+ expect(screen.getByTestId("edit-button")).toBeInTheDocument();
+
+const editButton = screen.getByTestId("edit-button");
+fireEvent.click(editButton);
+expect(mockDispatch).toHaveBeenCalledWith({ type: ActionTypes.SET_STEP, payload: { step: 1 } });
+``` 
+  </div>
+</div>
+
+- **``Tabs`` es un componente que recibe props** Podemos simular el componente y el envío de esas props:
+  - Simmulamos el envío de las props en un objeto: ``{ tabs, selected, onChange }``
+  - Estos valores **no tenemos que simularlos en el test** son los que recibirá en el componente.
+  - Podemos comprobar su renderizado a través del testId otorgado en en el test.
+  - Podemos simular el click y esperar el renderizado del componente que previamiente hemos mockeado
+<div style="display: flex; gap: 10px;">
+  <div style="width: 50%;">
+    <span style="color: yellow;">// Componente</span>
+
+```js
+  const tabs = [
+    {
+      id: 1,
+      name: "Tab One",
+    },
+    {
+      id: 2,
+      name: "Tab Two",
+    }
+  ]  
+<Tabs
+  className="offer-detail__tabs"
+  kind="underlined"
+  tabs={tabs}
+  selected={selected}
+  onChange={(tab) => setSelected(Number(tab))}
+/>
+ ```
+  </div>
+  <div style="width: 50%;">
+    <span style="color: yellow;">//Ejecución de test</span>
+
+```js
+vi.mock("@amiga-fwk-web/components-navigation/tabs", () => ({
+  __esModule: true,
+  default: ({ tabs, selected, onChange }: any) => (
+    <div>
+      {tabs.map((tab: any) => (
+        <button key={tab.id} data-testid={`tab-${tab.id}`} onClick={() => onChange(tab.id)}>
+          {tab.name}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+...
+expect(screen.getByTestId("tab-1")).toBeInTheDocument();
+expect(screen.getByTestId("tab-2")).toBeInTheDocument();
+fireEvent.click(screen.getByTestId("tab-2"));
+
+waitFor(() => {
+  expect(screen.getByText("Mocked ArticlesTable")).toBeInTheDocument();
+});
+``` 
+  </div>
+</div>
+
+- Simulación de un **hook que devuelve el resultado de la llamada a un servicio**:
+  - **useOfferDetailConnect** devuelve un objeto con el resultado de una llamada a un servicio y un booleano
+  - Este hook requiere de algunos argumentos
+  - Con el mock de ``vi.mock("@/connects/offer-detail.connect"`` simulamos el comportamiento del módulo
+  - ``vi.mock`` intercepta las importaciones del módulo ``@/connects/offer-detail.connect`` durante las pruebas.
+  - En lugar de utilizar la implementación real del módulo, proporciona un mock, definido por el callback que devuelve un objeto simulado.  
+  - `` __esModule: true``: Esto indica que el módulo simulado utiliza exportaciones ES6. Es necesario si el módulo original exporta su funcionalidad con ``export default``.
+  - ``default``: El mock provee una implementación simulada de la exportación por defecto del módulo.
+  - Se utiliza ``vi.fn``, que crea una **función espía (spy function)**. Esta función permite rastrear llamadas (cuántas veces se invoca, con qué argumentos, etc.).
+  - El mock devuelve un objeto que simula el estado o los datos que normalmente manejaría el módulo ``@/connects/offer-detail.connect``.
+    - ``offerSelected``: Un objeto que simula una oferta seleccionada con:
+      - ``articles: [``]: Indica que no hay artículos asociados.
+      - ``editableOffer``: true: Indica que la oferta es editable.
+    - ``loading: false``: Simula que el módulo no está en un estado de carga.
+  - De esta manera: ``(useOfferDetailConnect as unknown as ReturnType<typeof vi.fn>).mockReturnValu(...) ``  podemos modificar la respuesta de este módulo en cada prueba
+<div style="display: flex; gap: 10px;">
+  <div style="width: 50%;">
+    <span style="color: yellow;">// Componente</span>
+
+```js
+import useOfferDetailConnect from "@/connects/offer-detail.connect";
+...
+  const { offerSelected, loading } = useOfferDetailConnect(
+    checkLanguage(locale),
+    stateLocation?.offerId,
+    setOfferDetailServiceError,
+    dispatch,
+  );
+
+ //Este el el hook:
+ const useOfferDetailConnect = (
+  language: string | number,
+  offerId: number | null,
+  setOfferDetailServiceError: (error: any) => void,
+  dispatch: DispatchProp,
+) => {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [offerSelected, setOfferSelected] = useState<OfferDetailRes>({} as OfferDetailRes); 
+  ...
+  return { offerSelected, loading };
+ ```
+  </div>
+  <div style="width: 50%;">
+    <span style="color: yellow;">//Ejecución de test</span>
+
+```js
+import useOfferDetailConnect from "@/connects/offer-detail.connect";
+
+vi.mock("@/connects/offer-detail.connect", () => ({
+  __esModule: true,
+  default: vi.fn(() => ({
+    offerSelected: {
+      articles: [],
+      editableOffer: true,
+    },
+    loading: false,
+  })),
+}));
+
+...
+ it("should ...", () => {
+    (useOfferDetailConnect as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      offerSelected: { stateId: "", editableOffer: true, articles: [] },
+      loading: false,
+    });
+
+``` 
+  </div>
+</div>
+
+**[⬆ Volver a índice](#índice)**
+
+--- -->
 **[⬆ Volver a índice](#índice)**
 
 ---
