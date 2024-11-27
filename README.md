@@ -19,11 +19,11 @@
 - [**Mockear un módulo**](#mockear-un-módulo)
 - [**Explicación de algún ejemplo**](#explicación-de-algún-ejemplo)
 - [**Ejemplo de mockear una utilidad**](#ejemplo-de-mockear-una-utilidad)
+- [**Mockear dependencias**](#mockear-dependencias)
 - [**Simular eventos**](#simular-eventos)
 - [**Errores**](#errores)
   - [Error: The given element does not have a value setter](#error-the-given-element-does-not-have-a-value-setter)
 - [**Funcionamiento de screen.debug()**](#funcionamiento-de-screendebug)
-- [**Vale**](#vale)
 
 
 
@@ -353,6 +353,13 @@ const mockNavigate = vi.fn();
    - `` mockReturnValue(mockNavigate)``: Configura el mock de useNavigate para que devuelva mockNavigate cuando el componente lo invoque.
        - En lugar de devolver la implementación real de useNavigate, se usa la función simulada mockNavigate.
 
+
+
+
+
+
+
+
 **[⬆ Volver a índice](#índice)**
 
 ---
@@ -397,122 +404,8 @@ Con esta implementación, si llamas a ``formatPriceDotComma(100, 2)``, el mock d
 **[⬆ Volver a índice](#índice)**
 
 ---
-
-## **Simular eventos**
-Aquí tenemos algunos ejemplos de cómo simular el flujo de entrada de tatos del usuario:
-```js
-const closeButton = screen.getByRole("button", { name: "" }); //Buscamos el botón con getByRole
-fireEvent.click(closeButton); // Clicamos el botón
-expect(mockSetVisible).toHaveBeenCalledWith(false); //Comprobamos que la función recibida por props se elecute
-```
-
-```js
-// Simular entrada en un input
-const netInput = screen.getByTestId("withholding-net-input");
-await userEvent.type(netInput, "1000");
-
-// Simula despliegue de uh selector
-const select = screen.getByTestId("withholding-select-input-input");
-await userEvent.click(select);
-
-// Simula clicar opción del selector
-const option = screen.getByText("Tax 1");
-await userEvent.click(option);
-
-// Verificar cálculo y formato de withholding amount
-const withholdingAmountField = screen.getByTestId("total-withholding-input");
-expect(withholdingAmountField).toHaveValue("150,00"); // 1000 * 15% = 150.00
-```
-
-
-
-**[⬆ Volver a índice](#índice)**
-
----
-## **Errores**
-
-### Error: The given element does not have a value setter
-Intentado mockear la introducción de información en un selector de esta manera:
-```js
-const select = screen.getByTestId("pepelui-select-input-input");
-fireEvent.change(select, { target: { value: "1" } });
-```
-El error **``Error: The given element does not have a value setter``** significa que React Testing Library no puede cambiar el valor del elemento seleccionado mediante fireEvent.change porque el elemento select no tiene un atributo value que pueda ser actualizado directamente.
-
-Este problema suele ocurrir cuando:
-
-1. El componente Select es un componente personalizado que no se comporta como un select HTML estándar o un input.
-2. El componente utiliza alguna librería de componentes que maneja el estado del select internamente (por ejemplo, usando un pop-up o una lista desplegable), y no expone un value directamente para interactuar con él.
-
-**Posibles Soluciones**
-1. Usar ``fireEvent.click`` en lugar de ``fireEvent.change``  
-Si el Select se basa en una lista desplegable que se abre al hacer clic, intenta simular el clic y seleccionar la opción deseada manualmente. Puedes encontrar el elemento de la lista usando su texto:
-
-```js
-// Hacer clic en el componente Select para abrir la lista de opciones
-const select = screen.getByTestId("pepelui-select-input-input");
-fireEvent.click(select);
-
-// Seleccionar la opción deseada haciendo clic en ella (por el texto visible en llista)
-const option = screen.getByText("Tax 1");
-fireEvent.click(option);
-
-// Verificar que el porcentaje correspondiente se muestra
-expect(screen.getByDisplayValue("15")).toBeInTheDocument();
-
-```
-
-2.`` Usar userEvent ``   
-``userEvent`` es más avanzado que ``fireEvent`` para interacciones complejas como la selección en un Select. Asegúrate de tener @testing-library/user-event instalado e intenta usarlo en lugar de fireEvent:
-```js
-import userEvent from "@testing-library/user-event";
-
-// Abrir el selector
-const select = screen.getByTestId("pepelui-select-input-input");
-await userEvent.click(select);
-
-// Hacer clic en la opción deseada
-const option = screen.getByText("Tax 1");
-await userEvent.click(option);
-
-// Verificar el cambio en el valor de porcentaje
-expect(screen.getByDisplayValue("15")).toBeInTheDocument();
-```
-
-**[⬆ Volver a índice](#índice)**
-
----
-
-## **Funcionamiento de screen.debug()**
-Este método proviene de React Testing Library y se utiliza para **mostrar en la console el estado actual del DOM de la pantalla**. Imprime una representación legible del DOM actual, que es muy útil para depurar y ver cómo está estructurado el contenido en un punto específico del test.
-
-Puede manejar dos parámetros:  
-1. El primer parámetro opcional normalmente permite especificar un nodo específico del DOM que quieras depurar (en lugar de todo el DOM). Si pasas undefined, estás diciendo que imprima todo el DOM en pantalla.  
-   Para especificar un nodo específico del DOM en el primer parámetro de screen.debug(), simplemente necesitas obtener el nodo que deseas inspeccionar usando uno de los métodos de selección de React Testing Library, como ``screen.getByText``, ``screen.getByRole``, ``screen.getByTestId``, etc., y luego pasar ese nodo como el primer argumento de screen.debug().
-
-
-2. Este segundo parámetro opcional establece el límite máximo de caracteres que mostrará screen.debug(). Esto es útil para casos en que el DOM es grande y deseas ver más allá del límite predeterminado (generalmente 7000 caracteres).
-
-```js
-//Obtener un nodo específico, por ejemplo un botón
-const button = screen.getByRole("button", {name: /click me/i})
-
-//Imprime solo el DOM de ese elemento específico
-screen.debug(button)
-```
-
-Imprime todo el DOM y 30.000 caracteres:
-```js
-screen.debug(undefined, 30000)
-```
-
-**[⬆ Volver a índice](#índice)**
-
----
-## **Vale**
-Ejemplo de uso  
-Con esta implementación, si llamas a ``formatPriceDotComma(100, 2)``, el mock devolverá "100,00". Este enfoque es útil para pruebas donde se necesita el valor retornado formateado, permitiendo verificar los resultados que dependen de la salida formateada de la función.
-<!-- **Mockear una funció que invocamos para llamar a un servicio.**
+## **Mockear dependencias**
+**Mockear una funció que invocamos para llamar a un servicio.**
 <div style="display: flex; gap: 10px;">
   <div style="width: 50%;">
     <span style="color: yellow;">// Componente</span>
@@ -759,7 +652,115 @@ vi.mock("@/connects/offer-detail.connect", () => ({
 
 **[⬆ Volver a índice](#índice)**
 
---- -->
+---
+## **Simular eventos**
+Aquí tenemos algunos ejemplos de cómo simular el flujo de entrada de tatos del usuario:
+```js
+const closeButton = screen.getByRole("button", { name: "" }); //Buscamos el botón con getByRole
+fireEvent.click(closeButton); // Clicamos el botón
+expect(mockSetVisible).toHaveBeenCalledWith(false); //Comprobamos que la función recibida por props se elecute
+```
+
+```js
+// Simular entrada en un input
+const netInput = screen.getByTestId("withholding-net-input");
+await userEvent.type(netInput, "1000");
+
+// Simula despliegue de uh selector
+const select = screen.getByTestId("withholding-select-input-input");
+await userEvent.click(select);
+
+// Simula clicar opción del selector
+const option = screen.getByText("Tax 1");
+await userEvent.click(option);
+
+// Verificar cálculo y formato de withholding amount
+const withholdingAmountField = screen.getByTestId("total-withholding-input");
+expect(withholdingAmountField).toHaveValue("150,00"); // 1000 * 15% = 150.00
+```
+
+
+
+**[⬆ Volver a índice](#índice)**
+
+---
+## **Errores**
+
+### Error: The given element does not have a value setter
+Intentado mockear la introducción de información en un selector de esta manera:
+```js
+const select = screen.getByTestId("pepelui-select-input-input");
+fireEvent.change(select, { target: { value: "1" } });
+```
+El error **``Error: The given element does not have a value setter``** significa que React Testing Library no puede cambiar el valor del elemento seleccionado mediante fireEvent.change porque el elemento select no tiene un atributo value que pueda ser actualizado directamente.
+
+Este problema suele ocurrir cuando:
+
+1. El componente Select es un componente personalizado que no se comporta como un select HTML estándar o un input.
+2. El componente utiliza alguna librería de componentes que maneja el estado del select internamente (por ejemplo, usando un pop-up o una lista desplegable), y no expone un value directamente para interactuar con él.
+
+**Posibles Soluciones**
+1. Usar ``fireEvent.click`` en lugar de ``fireEvent.change``  
+Si el Select se basa en una lista desplegable que se abre al hacer clic, intenta simular el clic y seleccionar la opción deseada manualmente. Puedes encontrar el elemento de la lista usando su texto:
+
+```js
+// Hacer clic en el componente Select para abrir la lista de opciones
+const select = screen.getByTestId("pepelui-select-input-input");
+fireEvent.click(select);
+
+// Seleccionar la opción deseada haciendo clic en ella (por el texto visible en llista)
+const option = screen.getByText("Tax 1");
+fireEvent.click(option);
+
+// Verificar que el porcentaje correspondiente se muestra
+expect(screen.getByDisplayValue("15")).toBeInTheDocument();
+
+```
+
+2.`` Usar userEvent ``   
+``userEvent`` es más avanzado que ``fireEvent`` para interacciones complejas como la selección en un Select. Asegúrate de tener @testing-library/user-event instalado e intenta usarlo en lugar de fireEvent:
+```js
+import userEvent from "@testing-library/user-event";
+
+// Abrir el selector
+const select = screen.getByTestId("pepelui-select-input-input");
+await userEvent.click(select);
+
+// Hacer clic en la opción deseada
+const option = screen.getByText("Tax 1");
+await userEvent.click(option);
+
+// Verificar el cambio en el valor de porcentaje
+expect(screen.getByDisplayValue("15")).toBeInTheDocument();
+```
+
+**[⬆ Volver a índice](#índice)**
+
+---
+
+## **Funcionamiento de screen.debug()**
+Este método proviene de React Testing Library y se utiliza para **mostrar en la console el estado actual del DOM de la pantalla**. Imprime una representación legible del DOM actual, que es muy útil para depurar y ver cómo está estructurado el contenido en un punto específico del test.
+
+Puede manejar dos parámetros:  
+1. El primer parámetro opcional normalmente permite especificar un nodo específico del DOM que quieras depurar (en lugar de todo el DOM). Si pasas undefined, estás diciendo que imprima todo el DOM en pantalla.  
+   Para especificar un nodo específico del DOM en el primer parámetro de screen.debug(), simplemente necesitas obtener el nodo que deseas inspeccionar usando uno de los métodos de selección de React Testing Library, como ``screen.getByText``, ``screen.getByRole``, ``screen.getByTestId``, etc., y luego pasar ese nodo como el primer argumento de screen.debug().
+
+
+2. Este segundo parámetro opcional establece el límite máximo de caracteres que mostrará screen.debug(). Esto es útil para casos en que el DOM es grande y deseas ver más allá del límite predeterminado (generalmente 7000 caracteres).
+
+```js
+//Obtener un nodo específico, por ejemplo un botón
+const button = screen.getByRole("button", {name: /click me/i})
+
+//Imprime solo el DOM de ese elemento específico
+screen.debug(button)
+```
+
+Imprime todo el DOM y 30.000 caracteres:
+```js
+screen.debug(undefined, 30000)
+```
+
 **[⬆ Volver a índice](#índice)**
 
 ---
